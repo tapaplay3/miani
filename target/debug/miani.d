@@ -1,0 +1,1 @@
+/Users/n-sh0u/miani/target/debug/miani: /Users/n-sh0u/miani/src/config.rs /Users/n-sh0u/miani/src/lmstudio.rs /Users/n-sh0u/miani/src/main.rs /Users/n-sh0u/miani/src/modes.rs /Users/n-sh0u/miani/src/state.rs
