@@ -27,9 +27,34 @@
 
 ## Установка
 
+### Быстрая установка (рекомендуется)
+
 ```bash
-cargo build --release
+# Клонировать репозиторий
+git clone https://github.com/tapaplay3/miani.git
+cd miani
+
+# Установить
+./install.sh
 ```
+
+Скрипт установит `miani` в `/usr/local/bin` или `~/.local/bin` и вы сможете запускать его просто как `miani`.
+
+### Ручная установка
+
+```bash
+# Собрать проект
+cargo build --release
+
+# Скопировать в PATH (выберите один из вариантов)
+sudo cp target/release/miani /usr/local/bin/
+# или
+cp target/release/miani ~/.local/bin/
+# или
+cp target/release/miani ~/bin/
+```
+
+После установки убедитесь, что директория находится в вашем `$PATH`.
 
 ## Поддерживаемые провайдеры
 
@@ -45,18 +70,24 @@ cargo build --release
 
 ## Использование
 
-1. Запустите один из провайдеров (LM Studio или Ollama)
-2. Запустите CLI агент:
+После установки запускайте просто как `miani`:
 
 ```bash
 # LM Studio (по умолчанию)
-cargo run
+miani
 
 # Ollama
-cargo run -- -p ollama
+miani -p ollama
 
-# С флагами
-cargo run -- [OPTIONS]
+# С конкретной моделью
+miani -p ollama -m llama2
+```
+
+Если вы не установили через `install.sh`, используйте:
+
+```bash
+cargo run --release
+cargo run --release -- -p ollama
 ```
 
 ### Флаги командной строки
