@@ -6,13 +6,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConversationState {
-    pub messages: Vec<crate::lmstudio::Message>,
+    pub messages: Vec<crate::client::Message>,
     pub model: String,
+    pub provider: Option<String>,
     pub timestamp: u64,
 }
 
 impl ConversationState {
-    pub fn new(model: String) -> Self {
+    pub fn new(model: String, provider: Option<String>) -> Self {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -21,6 +22,7 @@ impl ConversationState {
         Self {
             messages: Vec::new(),
             model,
+            provider,
             timestamp,
         }
     }

@@ -1,14 +1,16 @@
+mod client;
 mod config;
-mod lmstudio;
 mod modes;
 mod state;
 
 use anyhow::Result;
 use clap::Parser;
 use colored::*;
-use lmstudio::{LMStudioClient, Message};
+use client::{LLMClient, Message};
+use config::Provider;
 use std::io::{self, Write};
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -18,6 +20,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[command(name = "miani")]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// Provider to use (lmstudio or ollama)
+    #[arg(short = 'p', long, default_value = "lmstudio")]
+    provider: String,
+
     /// Model name to use
     #[arg(short, long)]
     model: Option<String>,
@@ -26,19 +32,29 @@ struct Args {
     #[arg(long)]
     r#continue: bool,
 
-    /// LM Studio endpoint
-    #[arg(short, long, default_value = "http://localhost:1234/v1")]
-    endpoint: String,
+    /// API endpoint (overrides provider default)
+    #[arg(short, long)]
+    endpoint: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
 
+    // Parse provider
+    let provider = Provider::from_str(&args.provider).unwrap_or_else(|e| {
+        eprintln!("{} Using LM Studio as fallback.", e.yellow());
+        Provider::LMStudio
+    });
+
+    // Determine endpoint (CLI arg > provider default)
+    let endpoint = args.endpoint.unwrap_or_else(|| provider.default_endpoint().to_string());
+
+    // Determine model
     let config = config::Config::new();
-    let endpoint = args.endpoint;
     let model = args.model.unwrap_or(config.model);
-    let client = LMStudioClient::new(endpoint.clone(), model.clone());
+
+    let client = LLMClient::new(provider, endpoint.clone(), model.clone());
 
     // Setup Ctrl+C handler
     let interrupt_flag = Arc::new(AtomicBool::new(false));
@@ -76,18 +92,19 @@ async fn main() -> Result<()> {
     println!("{}", "  Minimalist CLI Agent for Local LLMs".dimmed());
     println!();
 
-    // Check LM Studio connection
-    println!("{}", "Checking connection to LM Studio...".cyan());
+    // Check provider connection
+    println!("{}", format!("Checking connection to {}...", client.get_provider_name()).cyan());
+    println!("{}", format!("  Endpoint: {}", endpoint).dimmed());
     if !client.check_connection().await? {
         eprintln!(
             "{} {}",
             "✗".red().bold(),
-            "Cannot connect to LM Studio. Make sure it's running on port 1234".red()
+            format!("Cannot connect to {}. {}", client.get_provider_name(), client.get_setup_hint()).red()
         );
         std::process::exit(1);
     }
 
-    println!("{}", "✓ Connected to LM Studio".green());
+    println!("{}", format!("✓ Connected to {}", client.get_provider_name()).green());
 
     // Get and display loaded model
     match client.get_loaded_model().await {
@@ -114,6 +131,16 @@ async fn main() -> Result<()> {
             Ok(saved_state) => {
                 println!("{}", "📝 Restored previous conversation".green());
                 println!("{} {} messages", "   ".dimmed(), saved_state.messages.len().to_string().yellow());
+
+                // Warn if provider changed
+                if let Some(saved_provider) = &saved_state.provider {
+                    if saved_provider != &provider.to_string() {
+                        println!("{} Provider changed from {} to {}",
+                            "⚠".yellow(),
+                            saved_provider.yellow(),
+                            provider.to_string().yellow());
+                    }
+                }
                 println!();
                 saved_state.messages
             }
@@ -174,6 +201,7 @@ async fn main() -> Result<()> {
             let save_state = state::ConversationState {
                 messages: conversation.clone(),
                 model: model.clone(),
+                provider: Some(provider.to_string()),
                 timestamp: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()

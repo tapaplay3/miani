@@ -4,7 +4,7 @@
 проект крайне сырой, написан по большей части с помощью нейросетей, много багов
 ## СКАЧИВАЙТЕ НА СВОЙ СТРАХ И РИСК 
 
-Минималистичный CLI агент для работы с локальными LLM через LM Studio с поддержкой множества режимов работы в стиле Claude Code.
+Минималистичный CLI агент для работы с локальными LLM через LM Studio или Ollama с поддержкой множества режимов работы в стиле Claude Code.
 
 ## Возможности
 
@@ -21,7 +21,9 @@
 ## Требования
 
 - Rust (1.70+)
-- [LM Studio](https://lmstudio.ai/) запущенный локально на порту 1234
+- Один из следующих провайдеров LLM:
+  - [LM Studio](https://lmstudio.ai/) запущенный локально на порту 1234
+  - [Ollama](https://ollama.ai/) запущенный локально на порту 11434
 
 ## Установка
 
@@ -29,45 +31,100 @@
 cargo build --release
 ```
 
+## Поддерживаемые провайдеры
+
+### LM Studio (по умолчанию)
+- **Endpoint:** http://localhost:1234/v1
+- **Установка:** Скачать с [lmstudio.ai](https://lmstudio.ai/)
+- **Запуск:** Открыть LM Studio, загрузить модель и запустить сервер
+
+### Ollama
+- **Endpoint:** http://localhost:11434/v1
+- **Установка:** Скачать с [ollama.ai](https://ollama.ai/)
+- **Запуск:** `ollama serve` в терминале
+
 ## Использование
 
-1. Запустите LM Studio и загрузите модель
-2. Убедитесь, что сервер запущен (обычно на `http://localhost:1234`)
-3. Запустите CLI агент:
+1. Запустите один из провайдеров (LM Studio или Ollama)
+2. Запустите CLI агент:
 
 ```bash
-# Простой запуск
+# LM Studio (по умолчанию)
 cargo run
 
-# Или с флагами
+# Ollama
+cargo run -- -p ollama
+
+# С флагами
 cargo run -- [OPTIONS]
 ```
 
 ### Флаги командной строки
 
 ```bash
+# Выбор провайдера (lmstudio или ollama)
+miani -p ollama
+
 # Выбор конкретной модели
 miani -m qwen2.5-coder-7b
+miani -p ollama -m llama2
 
 # Продолжить с сохраненного разговора
 miani --continue
 
 # Указать кастомный endpoint
 miani -e http://localhost:8080/v1
+miani -e http://192.168.1.100:11434/v1
 
 # Комбинация флагов
-miani -m llama3 --continue
+miani -p ollama -m codellama:7b --continue
 
 # Справка
 miani --help
 ```
 
 **Доступные флаги:**
+- `-p, --provider <PROVIDER>` - Провайдер (lmstudio или ollama, по умолчанию: lmstudio)
 - `-m, --model <MODEL>` - Название модели для использования
 - `--continue` - Продолжить с последнего сохраненного разговора
-- `-e, --endpoint <ENDPOINT>` - LM Studio endpoint (по умолчанию: http://localhost:1234/v1)
+- `-e, --endpoint <ENDPOINT>` - API endpoint (переопределяет дефолтный для провайдера)
 - `-h, --help` - Показать справку
 - `-V, --version` - Показать версию
+
+### Примеры использования
+
+**LM Studio:**
+```bash
+# Простой запуск
+miani
+
+# С конкретной моделью
+miani -m qwen2.5-coder-7b
+```
+
+**Ollama:**
+```bash
+# Базовый запуск
+miani -p ollama
+
+# С моделью Llama 2
+miani -p ollama -m llama2
+
+# CodeLlama для программирования
+miani -p ollama -m codellama:7b
+
+# Mistral
+miani -p ollama -m mistral
+```
+
+**Кастомные endpoint'ы:**
+```bash
+# Удаленный LM Studio сервер
+miani -e http://192.168.1.100:1234/v1
+
+# Удаленный Ollama сервер
+miani -p ollama -e http://192.168.1.100:11434/v1
+```
 
 ## Режимы работы
 

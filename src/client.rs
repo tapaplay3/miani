@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
+use crate::config::Provider;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
@@ -32,19 +33,25 @@ struct Delta {
     content: Option<String>,
 }
 
-pub struct LMStudioClient {
+pub struct LLMClient {
     client: reqwest::Client,
+    provider: Provider,
     endpoint: String,
     model: String,
 }
 
-impl LMStudioClient {
-    pub fn new(endpoint: String, model: String) -> Self {
+impl LLMClient {
+    pub fn new(provider: Provider, endpoint: String, model: String) -> Self {
         Self {
             client: reqwest::Client::new(),
+            provider,
             endpoint,
             model,
         }
+    }
+
+    pub fn provider(&self) -> Provider {
+        self.provider
     }
 
     pub async fn check_connection(&self) -> Result<bool> {
@@ -81,6 +88,14 @@ impl LMStudioClient {
         &self.model
     }
 
+    pub fn get_provider_name(&self) -> &str {
+        self.provider.name()
+    }
+
+    pub fn get_setup_hint(&self) -> &str {
+        self.provider.setup_hint()
+    }
+
     pub async fn chat_stream<F>(&self, messages: Vec<Message>, mut on_chunk: F) -> Result<String>
     where
         F: FnMut(&str),
@@ -99,10 +114,10 @@ impl LMStudioClient {
             .json(&request)
             .send()
             .await
-            .context("Failed to send request to LM Studio")?;
+            .context(format!("Failed to send request to {}", self.provider.name()))?;
 
         if !response.status().is_success() {
-            anyhow::bail!("LM Studio returned error: {}", response.status());
+            anyhow::bail!("{} returned error: {}", self.provider.name(), response.status());
         }
 
         let mut stream = response.bytes_stream();
